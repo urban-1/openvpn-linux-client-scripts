@@ -45,7 +45,9 @@ class LogViewer(QDialog):
   def updateText(self):
     scroll = 0
     sb = self.txtview.verticalScrollBar()
-    sv = sb.value();
+    hsb = self.txtview.horizontalScrollBar()
+    hsv = hsb.value()
+    sv = sb.value()
     if (sb.value() == sb.maximum()):
       scroll = 1
       
@@ -65,6 +67,8 @@ class LogViewer(QDialog):
       sb.setValue(sb.maximum())
     else:
       sb.setValue(sv)
+      
+    hsb.setValue(hsv)
 	
 
 class VPNManager(QMainWindow):
@@ -244,11 +248,15 @@ class VPNManager(QMainWindow):
       ret = msgBox.exec_();
       if (ret == QMessageBox.Ok):
 	os.system(str("rm -r "+self.root_dir+"/"+vpn_name))
+	self.updateList()
 	
       
     def doImport(self):
+      fileName = ""
       fileName = QFileDialog.getOpenFileName(self,
 	"Import Configuration", os.getenv("HOME"));
+      if (fileName == ""):
+	return
       finfo = QFileInfo(fileName)
       directory = finfo.absolutePath()
       basename = finfo.baseName()
@@ -279,6 +287,8 @@ class VPNManager(QMainWindow):
       os.system(str("cp -r "+directory+"/keys/* "+self.root_dir+"/"+basename+"/keys"))
       os.system(str("cp "+self.root_dir+"/base/init.sh"+" "+self.root_dir+"/"+basename+"/"+basename+".sh"))
       os.system(str("cp "+self.root_dir+"/base/linux_updown.sh"+" "+self.root_dir+"/"+basename))
+      
+      self.updateList()
      
 
 

@@ -10,6 +10,7 @@ case "$1" in
 start)
   if [ ! -f /var/run/openvpn.${conf}.pid  ]; then
 	openvpn --route-delay 15 --log ${dir}/${conf}.log --writepid /var/run/openvpn.${conf}.pid --cd ${dir} --config ${dir}/${conf}.conf --script-security 2 --daemon;
+	chmod ugo+r ${dir}/${conf}.log
   else
     echo "Client Tunnel (${conf}) is already started"
   fi
@@ -18,6 +19,7 @@ stop)
   if [ -f /var/run/openvpn.${conf}.pid  ]; then
         kill `cat /var/run/openvpn.${conf}.pid`;
 	rm /var/run/openvpn.${conf}.pid;
+	rm ${dir}/${conf}.log
   else
     echo "Client Tunnel (${conf}) is already stoped"
   fi
@@ -38,6 +40,7 @@ restart)
 force-stop)
    kill `cat /var/run/openvpn.${conf}.pid` 2> /dev/null
    rm /var/run/openvpn.${conf}.pid 2> /dev/null
+   rm ${dir}/${conf}.log
   ;;
 *)
   echo "Usage: $0 {start|stop|toggle|restart|force-stop}" >&2

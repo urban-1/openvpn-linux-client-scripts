@@ -20,7 +20,7 @@ class LogViewer(QDialog):
 	self.resize(1000, 500)
         self.setWindowTitle('OpenVPN Manager - Log Viewer')
         self.txtview = QTextEdit(self)
-        self.txtview.setReadOnly(1)
+        self.txtview.setReadOnly(True)
         self.txtview.setLineWrapMode(QTextEdit.NoWrap)
         
         self.layout=QHBoxLayout(self)
@@ -43,17 +43,17 @@ class LogViewer(QDialog):
     QDialog.done(self, code)
     
   def updateText(self):
-    scroll = 0
+    scroll = False
     sb = self.txtview.verticalScrollBar()
     hsb = self.txtview.horizontalScrollBar()
     hsv = hsb.value()
     sv = sb.value()
     if (sb.value() == sb.maximum()):
-      scroll = 1
+      scroll = True
       
     self.txtview.setText("")
     logfile = QFile(self.log);
-    if (logfile.open(QIODevice.ReadOnly) == 0):
+    if (logfile.open(QIODevice.ReadOnly) == False):
      qDebug("Unable to load file")
      return 
     
@@ -63,7 +63,7 @@ class LogViewer(QDialog):
     
     self.txtview.setText(text)
     
-    if (scroll == 1):
+    if (scroll == True):
       sb.setValue(sb.maximum())
     else:
       sb.setValue(sv)
@@ -100,6 +100,8 @@ class VPNManager(QMainWindow):
 	self.vpns.setAlternatingRowColors(True)
         self.vpns.setHorizontalHeaderLabels(headers)
         self.vpns.horizontalHeader().setResizeMode( 0, QHeaderView.Stretch );
+       
+
         
         self.connect(self.vpns, SIGNAL('itemSelectionChanged()'), self.enableActions)
         
@@ -157,6 +159,7 @@ class VPNManager(QMainWindow):
         
         
     def initVPNs(self, selected=""):
+	self.vpns.setAlternatingRowColors(True)
 	it=QDirIterator(self.root_dir)
 	count = 0;
 	while (it.hasNext()):
@@ -167,12 +170,14 @@ class VPNManager(QMainWindow):
 	    if ((fi.baseName() != "" ) & (str(fi.baseName()) != "base")):
 		
 		tableit = QTableWidgetItem(fi.baseName())
+		tableit.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
 		self.vpns.insertRow(count);
 		self.vpns.setItem(count,0,tableit)
 		
 		# Status
 		status = QFileInfo( "/var/run/openvpn."+fi.baseName()+".pid")
 		stat_it = QTableWidgetItem("UP")
+		stat_it.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
 		font = QFont()
 		brush = QBrush()
 		font.setBold(1)
@@ -192,9 +197,14 @@ class VPNManager(QMainWindow):
 		  
 		# Fix Selected
 		if (fi.baseName() == selected):
-		  self.vpns.setRangeSelected(QTableWidgetSelectionRange(count,0,count,1), 1)
+		  self.vpns.setRangeSelected(QTableWidgetSelectionRange(count,0,count,1), True)
+		  
+		self.vpns.setRowHeight(count,18);
 		  
 		count+=1
+		
+	# End Of While
+
 		
     def getVPN_name(self):
       vpn_name=""
@@ -207,7 +217,6 @@ class VPNManager(QMainWindow):
     def updateList(self):
 	name=self.getVPN_name()
 	self.clearVPNs()
-	self.vpns.setAlternatingRowColors(True)
 	self.initVPNs(name)
 	
 		
@@ -292,7 +301,8 @@ class VPNManager(QMainWindow):
      
 
 
+# MAIN
 app = QApplication(sys.argv)
-main = VPNManager()
-main.show()
+mainwin = VPNManager()
+mainwin.show()
 sys.exit(app.exec_())

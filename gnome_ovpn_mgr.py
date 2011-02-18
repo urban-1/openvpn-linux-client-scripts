@@ -73,12 +73,16 @@ class LogViewer(QDialog):
 
 class VPNManager(QMainWindow):
     root_dir = os.getenv("HOME") + "/.vpn_manager"
+    sudo_cmd=" gksu "
+    editor=" gedit "
     vpns = {}
     toggleBut = {}
     logBut = {}
     delBut = {}
+    editBut = {}
     listTimer = {}
     logView = {}
+    
     
     def __init__(self): 
         QMainWindow.__init__(self)
@@ -128,6 +132,10 @@ class VPNManager(QMainWindow):
         self.delBut = QPushButton("Delete VPN")
         actLayout.addWidget(self.delBut)
         self.connect(self.delBut, SIGNAL('clicked()'), self.doDelete)
+        
+        self.editBut = QPushButton("Edit Config")
+        actLayout.addWidget(self.editBut)
+        self.connect(self.editBut, SIGNAL('clicked()'), self.doEdit)
 
         layout.addWidget(actFrame)
         
@@ -138,8 +146,8 @@ class VPNManager(QMainWindow):
         exit.setStatusTip('Exit application')
         self.connect(exit, SIGNAL('triggered()'), SLOT('close()'))
         
-        newConfig = QAction(QIcon('icons/new.png'), 'New', self)
-        newConfig.setShortcut('Ctrl+N')
+        newConfig = QAction(QIcon('icons/new.png'), 'Import', self)
+        newConfig.setShortcut('Ctrl+I')
         newConfig.setStatusTip('Import Config')
         self.connect(newConfig, SIGNAL('triggered()'), self.doImport)
 
@@ -228,15 +236,23 @@ class VPNManager(QMainWindow):
 	  self.toggleBut.setEnabled(0)
 	  self.logBut.setEnabled(0)
 	  self.delBut.setEnabled(0)
+	  self.editBut.setEnabled(0)
 	  
     def enableActions(self):
       self.toggleBut.setEnabled(1)
       self.logBut.setEnabled(1)
       self.delBut.setEnabled(1)
+      self.editBut.setEnabled(1)
       
     def doToggle(self):
       vpn_name =self.getVPN_name()
-      cmd = " kdesudo "+ self.root_dir+"/"+vpn_name+"/"+vpn_name+".sh toggle"
+      cmd = self.sudo_cmd+ self.root_dir+"/"+vpn_name+"/"+vpn_name+".sh toggle"
+      qDebug(cmd)
+      os.system(str(cmd))
+      
+    def doEdit(self):
+      vpn_name =self.getVPN_name()
+      cmd = self.editor+ self.root_dir+"/"+vpn_name+"/"+vpn_name+".conf&"
       qDebug(cmd)
       os.system(str(cmd))
       
@@ -258,6 +274,7 @@ class VPNManager(QMainWindow):
       if (ret == QMessageBox.Ok):
 	os.system(str("rm -r "+self.root_dir+"/"+vpn_name))
 	self.updateList()
+      self.disableActions()
 	
       
     def doImport(self):

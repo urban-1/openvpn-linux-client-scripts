@@ -4,13 +4,139 @@
 
 import sys
 import os 
+import shlex, subprocess 
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
+
+class InfoViewer(QDialog):
+  local_lbl={}
+  remote_lbl={}
+  routes_lbl={}
+  dns_lbl={}
+  if_name_lbl={}
+  vpn_log=""
+  if_name=""
+  
+  def __init__(self):
+    QDialog.__init__(self)
+    self.setupGUI()
+      
+  def setupGUI(self):
+    #self.resize(200, 500)
+    self.setWindowTitle('Info Viewer')
+    
+    self.init_labels();
+    
+    ip_grp = QGroupBox("IP Settings")
+    ip_layout = QGridLayout();
+    local_txt=QLabel("Local:")
+    ip_layout.addWidget(local_txt,0,0)
+    ip_layout.addWidget(self.local_lbl,0,1)
+    remote_txt=QLabel("Remote:")
+    ip_layout.addWidget(remote_txt,1,0)
+    ip_layout.addWidget(self.remote_lbl,1,1)
+    ip_grp.setLayout(ip_layout)
+    
+    
+    routes_grp = QGroupBox("Routes from VPN")
+    routes_layout = QGridLayout();
+    routes_layout.addWidget(self.routes_lbl)
+    routes_grp.setLayout(routes_layout)
+    
+    dns_grp = QGroupBox("DNS Servers")
+    dns_layout = QGridLayout();
+    dns_layout.addWidget(self.dns_lbl)
+    dns_grp.setLayout(dns_layout)
+    
+    self.layout=QVBoxLayout(self)
+    self.layout.addWidget(self.if_name_lbl)
+    self.layout.addWidget(ip_grp)
+    self.layout.addWidget(routes_grp)
+    self.layout.addWidget(dns_grp)
+    
+  def init_labels(self):
+    self.local_lbl=QLabel("")
+    self.remote_lbl=QLabel("")
+    self.routes_lbl=QLabel("")
+    self.dns_lbl=QLabel("")
+    self.if_name_lbl=QLabel("Interface: ")
+    
+  def reset_labels(self):
+    self.local_lbl.setText("")
+    self.remote_lbl.setText("")
+    self.routes_lbl.setText("")
+    self.dns_lbl.setText("")
+    self.if_name_lbl.setText("Interface: DOWN")
+    
+      
+    
+  def getInfo(self):
+    self.if_name = ""
+    output=""
+    try:
+      #cmd="cat "+self.vpn_log+" | grep tap | sed 's/.*\(tap[0-9]*\).*/\1/g' | head -n1"
+      p1=subprocess.Popen(["cat",self.vpn_log], stdout=subprocess.PIPE)
+      p2=subprocess.Popen(["grep","tap"],stdin=p1.stdout, stdout=subprocess.PIPE)
+      p3=subprocess.Popen(["sed","s/.*\(tap[0-9]*\).*/\\1/g"],stdin=p2.stdout, stdout=subprocess.PIPE)
+      p4=subprocess.Popen(["head","-n1"],stdin=p3.stdout, stdout=subprocess.PIPE)
+      p1.stdout.close()
+      p2.stdout.close()
+      p3.stdout.close()
+      output = p4.communicate()[0]
+      p1.wait();
+    except:
+      self.reset_labels()
+      self.getInfo()
+      return
+      
+   
+    if (p1.returncode != 0):
+      qDebug("Code:"+str(p1.returncode))
+      self.reset_labels()
+      return
+          
+    # Update Interface name
+    self.if_name = output.replace("\n","")
+    self.if_name_lbl.setText("Interface: "+self.if_name)
+    
+    #  ifconfig tap0  | awk -F'[ :]*' '/inet addr/{print $4}'
+    p1=subprocess.Popen(["ifconfig",self.if_name], stdout=subprocess.PIPE)
+    p2=subprocess.Popen(["awk","-F","[ :]*","/inet addr/{print $4}"],stdin=p1.stdout, stdout=subprocess.PIPE)
+    p1.stdout.close()
+    output = p2.communicate()[0]
+    
+    self.local_lbl.setText(output)
+    
+    
+    # route -n |  awk -F'[ ]*' '/tap0/{print $1"/"$3}'
+    p1=subprocess.Popen(["route","-n"], stdout=subprocess.PIPE)
+    p2=subprocess.Popen(["awk","-F","[ ]*","/"+self.if_name+"/{print $1\"/\"$3}"],stdin=p1.stdout, stdout=subprocess.PIPE)
+    p1.stdout.close()
+    output = p2.communicate()[0]
+    
+    self.routes_lbl.setText(output)
+    
+    
+    # cat /etc/resolv.conf | grep -v '#'
+    p1=subprocess.Popen(["cat","/etc/resolv.conf"], stdout=subprocess.PIPE)
+    p2=subprocess.Popen(["grep","-v","#"],stdin=p1.stdout, stdout=subprocess.PIPE)
+    p1.stdout.close()
+    output = p2.communicate()[0]
+    
+    self.dns_lbl.setText(output)
+    
+    
+  def setLog(self,vpn_log):
+    self.vpn_log = vpn_log
+    self.getInfo()
+    
 
 class LogViewer(QDialog):
   log=""
   txtview = {}
   logTimer = {}
+  logfile = {}
+  opened=False
   
   def __init__(self): 
         QDialog.__init__(self)
@@ -31,7 +157,19 @@ class LogViewer(QDialog):
 	
         
   def setLog(self, fname):
+	if (self.opened == True):
+	  self.logfile.close()
+	  
 	self.log = fname
+	self.logfile = QFile(self.log);
+	
+	if (self.logfile.open(QIODevice.ReadOnly) == False):
+	  qDebug("Unable to load file")
+	  self.opened=False
+	  return
+	  
+	self.opened=True
+
 	
   def show(self):
     QDialog.show(self)
@@ -51,17 +189,22 @@ class LogViewer(QDialog):
     if (sb.value() == sb.maximum()):
       scroll = True
       
-    self.txtview.setText("")
-    logfile = QFile(self.log);
-    if (logfile.open(QIODevice.ReadOnly) == False):
+    
+    if (self.logfile.error() != 0):
      qDebug("Unable to load file")
+     self.txtview.setText("Unable to load file, error:" + self.logfile.errorString())
+     # Try again
+     if (self.logfile.open(QIODevice.ReadOnly) == True):
+       self.opened = True;
      return 
     
-    stream = QTextStream ( logfile );
-    text = stream.readAll()
-    logfile.close()
+    newtext = ""
+    while (self.logfile.atEnd() == False):
+      newtext += self.logfile.readLine()
+  
     
-    self.txtview.setText(text)
+    self.txtview.setText(self.txtview.toPlainText() + newtext.__str__ ())
+    
     
     if (scroll == True):
       sb.setValue(sb.maximum())
@@ -79,9 +222,12 @@ class VPNManager(QMainWindow):
     toggleBut = {}
     logBut = {}
     delBut = {}
+    nfoBut = {}
     editBut = {}
     listTimer = {}
     logView = {}
+    nfoView = {}
+    
     
     
     def __init__(self): 
@@ -92,7 +238,6 @@ class VPNManager(QMainWindow):
         
         
     def setupGUI(self):
-	self.resize(350, 250)
         self.setWindowTitle('OpenVPN Manager')
 
 	self.vpns = QTableWidget()
@@ -136,6 +281,10 @@ class VPNManager(QMainWindow):
         self.editBut = QPushButton("Edit Config")
         actLayout.addWidget(self.editBut)
         self.connect(self.editBut, SIGNAL('clicked()'), self.doEdit)
+        
+        self.nfoBut = QPushButton("View Info")
+        actLayout.addWidget(self.nfoBut)
+        self.connect(self.nfoBut, SIGNAL('clicked()'), self.doViewInfo)
 
         layout.addWidget(actFrame)
         
@@ -164,6 +313,8 @@ class VPNManager(QMainWindow):
 	listTimer.start(3000)
 	
 	self.logView = LogViewer()
+	self.nfoView = InfoViewer()
+	self.resize(200, 200)
         
         
     def initVPNs(self, selected=""):
@@ -237,12 +388,14 @@ class VPNManager(QMainWindow):
 	  self.logBut.setEnabled(0)
 	  self.delBut.setEnabled(0)
 	  self.editBut.setEnabled(0)
+	  self.nfoBut.setEnabled(0)
 	  
     def enableActions(self):
       self.toggleBut.setEnabled(1)
       self.logBut.setEnabled(1)
       self.delBut.setEnabled(1)
       self.editBut.setEnabled(1)
+      self.nfoBut.setEnabled(1)
       
     def doToggle(self):
       vpn_name =self.getVPN_name()
@@ -262,6 +415,11 @@ class VPNManager(QMainWindow):
       qDebug("Opening Log: "+path)
       self.logView.setLog(path)
       self.logView.show()
+      
+    def doViewInfo(self):
+      vpn_name =self.getVPN_name()
+      self.nfoView.setLog( self.root_dir+"/"+vpn_name+"/"+vpn_name+".log")
+      self.nfoView.show()
       
     def doDelete(self):
       vpn_name = self.getVPN_name()

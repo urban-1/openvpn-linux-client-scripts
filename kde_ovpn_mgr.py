@@ -430,10 +430,24 @@ class VPNManager(QMainWindow):
       msgBox.setDefaultButton(QMessageBox.Cancel);
       ret = msgBox.exec_();
       if (ret == QMessageBox.Ok):
-	os.system(str("rm -r "+self.root_dir+"/"+vpn_name))
-	self.updateList()
+	self.deleteVpn(vpn_name)
+      
+      
+    def deleteVpn(self, vpn_name):
+      os.system(str("rm -r "+self.root_dir+"/"+vpn_name))
+      self.updateList()
       self.disableActions()
+
+    def getPassFile(self, conf):
+      pass_file=""
+      p=subprocess.Popen(["awk","-F"," *","/auth-user-pass/{print $1} ",conf], stdout=subprocess.PIPE)
+      pass_file=p.communicate()[0]
+      
+      if (pass_file!=""):
+	return True
 	
+      return False
+      
       
     def doImport(self):
       fileName = ""
@@ -472,10 +486,36 @@ class VPNManager(QMainWindow):
       os.system(str("cp "+self.root_dir+"/base/init.sh"+" "+self.root_dir+"/"+basename+"/"+basename+".sh"))
       os.system(str("cp "+self.root_dir+"/base/linux_updown.sh"+" "+self.root_dir+"/"+basename))
       
+      # Check for password in the configuration
+      if (self.getPassFile(fileName)):
+	self.setConfigPass(basename)
+	
+      
       self.updateList()
      
+    def setConfigPass(self, basename):
+      username=QInputDialog.getText ( self, "Enter Info", "Your VPN username", QLineEdit.Normal, "")
+      password=QInputDialog.getText ( self, "Enter Info", "Your VPN password", QLineEdit.Password, "")
+      
+      if (username[1] == False | password[1] == False ):
+	self.deleteVpn(basename)
+	return
 
-
+      passfile=QFile(self.root_dir+"/"+basename+"/"+basename+".pswd")
+      if (passfile.open(QIODevice.WriteOnly) == False):
+	self.deleteVpn(basename)
+	return
+	
+      passfile.write(str(username[0]+"\n"+password[0]))
+      passfile.close()
+      QFile.setPermissions(self.root_dir+"/"+basename+"/"+basename+".pswd", QFile.WriteOwner|QFile.ReadOwner)
+      
+      # Fix Config
+      os.system(str("cat "+self.root_dir+"/"+basename+"/"+basename+".conf | sed 's/auth-user-pass/auth-user-pass "+basename+".pswd/g' > "+
+      self.root_dir+"/"+basename+"/tmp"))
+      os.system(str("mv "+self.root_dir+"/"+basename+"/tmp "+self.root_dir+"/"+basename+"/"+basename+".conf"))
+      
+      
 # MAIN
 app = QApplication(sys.argv)
 mainwin = VPNManager()

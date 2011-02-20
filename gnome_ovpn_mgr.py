@@ -128,6 +128,8 @@ class InfoViewer(QDialog):
     
     
   def setLog(self,vpn_log):
+    if (vpn_log==self.vpn_log):
+      return
     self.vpn_log = vpn_log
     self.getInfo()
     
@@ -158,6 +160,8 @@ class LogViewer(QDialog):
 	
         
   def setLog(self, fname):
+	if (fname==self.log):
+	  return
 	if (self.opened == True):
 	  self.logfile.close()
 	  
@@ -201,11 +205,16 @@ class LogViewer(QDialog):
     
     newtext = ""
     while (self.logfile.atEnd() == False):
-      newtext += self.logfile.readLine()
-  
-    
-    self.txtview.setText(self.txtview.toPlainText() + newtext.__str__ ())
-    
+      line=self.logfile.readLine()
+      if (line != ""):
+	newtext += line
+	
+    if (newtext != ""):
+      if ((len(newtext) > 2) & (newtext[len(newtext)-1] == '\n') ):
+	newtext = newtext[0:len(newtext)-2]
+	
+      self.txtview.append(newtext.__str__())
+      
     
     if (scroll == True):
       sb.setValue(sb.maximum())
@@ -236,6 +245,7 @@ class VPNManager(QMainWindow):
 	self.setupGUI()
 	self.initVPNs()
 	self.disableActions()
+	self.setWindowIcon(QIcon(':/images/applications-internet.png'))
         
         
     def setupGUI(self):
@@ -253,7 +263,7 @@ class VPNManager(QMainWindow):
        
 
         
-        self.connect(self.vpns, SIGNAL('itemSelectionChanged()'), self.enableActions)
+        self.connect(self.vpns, SIGNAL('itemSelectionChanged()'), self.vpnChanged)
         
         # Main Frame
         mainFrame = QFrame()
@@ -263,9 +273,8 @@ class VPNManager(QMainWindow):
         self.setCentralWidget(mainFrame)
         
         # Actions
-        actFrame = QFrame()
         actLayout = QHBoxLayout()
-        actFrame.setLayout(actLayout)
+        actLayout2 = QHBoxLayout()
         
         self.toggleBut = QPushButton(QIcon(":/images/adept_update.png"), "Toggle")
         actLayout.addWidget(self.toggleBut)
@@ -280,14 +289,15 @@ class VPNManager(QMainWindow):
         self.connect(self.delBut, SIGNAL('clicked()'), self.doDelete)
         
         self.editBut = QPushButton(QIcon(":/images/edit.png"),"Edit Config")
-        actLayout.addWidget(self.editBut)
+        actLayout2.addWidget(self.editBut)
         self.connect(self.editBut, SIGNAL('clicked()'), self.doEdit)
         
         self.nfoBut = QPushButton(QIcon(":/images/info.png"),"View Info")
-        actLayout.addWidget(self.nfoBut)
+        actLayout2.addWidget(self.nfoBut)
         self.connect(self.nfoBut, SIGNAL('clicked()'), self.doViewInfo)
 
-        layout.addWidget(actFrame)
+        layout.addLayout(actLayout)
+        layout.addLayout(actLayout2)
         
         
 
@@ -317,7 +327,16 @@ class VPNManager(QMainWindow):
 	self.nfoView = InfoViewer()
 	self.resize(200, 200)
         
-        
+    def vpnChanged(self):
+      self.enableActions()
+      # Update Open Dialogs
+      vpn_name =self.getVPN_name()
+      if (vpn_name == ""):
+	return
+      path = self.root_dir+"/"+vpn_name+"/"+vpn_name+".log"
+      self.logView.setLog(path)
+      self.nfoView.setLog(path)
+      
     def initVPNs(self, selected=""):
 	self.vpns.setAlternatingRowColors(True)
 	it=QDirIterator(self.root_dir)
@@ -413,7 +432,6 @@ class VPNManager(QMainWindow):
     def doViewLog(self):
       vpn_name =self.getVPN_name()
       path = self.root_dir+"/"+vpn_name+"/"+vpn_name+".log"
-      qDebug("Opening Log: "+path)
       self.logView.setLog(path)
       self.logView.show()
       

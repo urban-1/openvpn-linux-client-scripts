@@ -1,0 +1,13 @@
+<RCC>
+  <qresource prefix="/">
+    <file>images/edit.png</file>
+    <file>images/exit.png</file>
+    <file>images/find.png</file>
+    <file>images/filenew.png</file>
+    <file>images/edittrash.png</file>
+    <file>images/button_cancel.png</file>
+    <file>images/adept_update.png</file>
+    <file>images/info.png</file>
+    <file>images/applications-internet.png</file>
+  </qresource>
+</RCC>

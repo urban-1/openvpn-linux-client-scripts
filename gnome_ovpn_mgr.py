@@ -5,6 +5,7 @@
 import sys
 import os 
 import shlex, subprocess 
+import res_rc
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 
@@ -266,23 +267,23 @@ class VPNManager(QMainWindow):
         actLayout = QHBoxLayout()
         actFrame.setLayout(actLayout)
         
-        self.toggleBut = QPushButton("Toggle")
+        self.toggleBut = QPushButton(QIcon(":/images/adept_update.png"), "Toggle")
         actLayout.addWidget(self.toggleBut)
         self.connect(self.toggleBut, SIGNAL('clicked()'), self.doToggle)
         
-        self.logBut = QPushButton("View Log")
+        self.logBut = QPushButton(QIcon(":/images/find.png"),"View Log")
         actLayout.addWidget(self.logBut)
         self.connect(self.logBut, SIGNAL('clicked()'), self.doViewLog)
         
-        self.delBut = QPushButton("Delete VPN")
+        self.delBut = QPushButton(QIcon(":/images/button_cancel.png"),"Delete VPN")
         actLayout.addWidget(self.delBut)
         self.connect(self.delBut, SIGNAL('clicked()'), self.doDelete)
         
-        self.editBut = QPushButton("Edit Config")
+        self.editBut = QPushButton(QIcon(":/images/edit.png"),"Edit Config")
         actLayout.addWidget(self.editBut)
         self.connect(self.editBut, SIGNAL('clicked()'), self.doEdit)
         
-        self.nfoBut = QPushButton("View Info")
+        self.nfoBut = QPushButton(QIcon(":/images/info.png"),"View Info")
         actLayout.addWidget(self.nfoBut)
         self.connect(self.nfoBut, SIGNAL('clicked()'), self.doViewInfo)
 
@@ -290,12 +291,12 @@ class VPNManager(QMainWindow):
         
         
 
-        exit = QAction(QIcon('icons/exit.png'), 'Exit', self)
+        exit = QAction(QIcon(':/images/exit.png'), 'Exit', self)
         exit.setShortcut('Ctrl+Q')
         exit.setStatusTip('Exit application')
         self.connect(exit, SIGNAL('triggered()'), SLOT('close()'))
         
-        newConfig = QAction(QIcon('icons/new.png'), 'Import', self)
+        newConfig = QAction(QIcon(':/images/filenew.png'), 'Import', self)
         newConfig.setShortcut('Ctrl+I')
         newConfig.setStatusTip('Import Config')
         self.connect(newConfig, SIGNAL('triggered()'), self.doImport)

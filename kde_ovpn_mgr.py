@@ -470,7 +470,7 @@ class VPNManager(QMainWindow):
 
     def getPassFile(self, conf):
       pass_file=""
-      p=subprocess.Popen(["awk","-F"," *","/auth-user-pass/{print $1} ",conf], stdout=subprocess.PIPE)
+      p=subprocess.Popen(["awk","-F"," *","/^auth-user-pass/{print $1} ",conf], stdout=subprocess.PIPE)
       pass_file=p.communicate()[0]
       
       if (pass_file!=""):

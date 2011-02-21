@@ -90,7 +90,7 @@ class InfoViewer(QDialog):
       self.reset_labels()
       self.getInfo()
       return
-      
+    
    
     if (p1.returncode != 0):
       qDebug("Code:"+str(p1.returncode))
@@ -101,13 +101,22 @@ class InfoViewer(QDialog):
     self.if_name = output.replace("\n","")
     self.if_name_lbl.setText("Interface: "+self.if_name)
     
+    
+    # "cat "+self.vpn_log+"  | awk -F'[][ :]*' '/remote:/{print $12":"$13}'
+    p1=subprocess.Popen(["cat",self.vpn_log], stdout=subprocess.PIPE)
+    p2=subprocess.Popen(["awk","-F","[][ :]*","/remote:/{print $12\":\"$13}"],stdin=p1.stdout, stdout=subprocess.PIPE)
+    p1.stdout.close()
+    output = p2.communicate()[0]
+    
+    self.remote_lbl.setText(output.replace("\n",""));
+    
     #  ifconfig tap0  | awk -F'[ :]*' '/inet addr/{print $4}'
     p1=subprocess.Popen(["ifconfig",self.if_name], stdout=subprocess.PIPE)
     p2=subprocess.Popen(["awk","-F","[ :]*","/inet addr/{print $4}"],stdin=p1.stdout, stdout=subprocess.PIPE)
     p1.stdout.close()
     output = p2.communicate()[0]
     
-    self.local_lbl.setText(output)
+    self.local_lbl.setText(output.replace("\n",""))
     
     
     # route -n |  awk -F'[ ]*' '/tap0/{print $1"/"$3}'

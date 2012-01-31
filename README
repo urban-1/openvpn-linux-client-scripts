@@ -2,6 +2,20 @@
 
 These are two simple scripts... The first is used to start/stop/toggle a specific tunnel as a service (init script). The second one is a script called when the tunnel is established or disconnected (up/down script). The up/down script assumes that the TAP interface will get IP using DHCP and it can handle various network configuration issues. 
 
+- Installation
+
+This will just create the folders needed in the home directory. The scripts can then be copied to any location.
+To install do: 
+
+cd <project folder>
+make install
+
+If images are not shown when you run the python script, then you need to do:
+
+make build
+
+
+
 - Up/Down script
 
 This script is meaningful only if on your setup you have to do DHCP request for the TAP interface... DHCP by default may mess up your /etc/resolv.conf file and/or the routing table by installing a default route through the VPN. Thus the script gives you the following options:

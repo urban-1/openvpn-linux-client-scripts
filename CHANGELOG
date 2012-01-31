@@ -1,3 +1,5 @@
 * v1.1
+ - BUG FIX: Importing VPNs configurations with space (' ') in their name should now be working
+ - Makefile fixed
  - Move/Copy operations without os.system
  - Reloading logs bug fixed

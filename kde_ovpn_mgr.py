@@ -6,6 +6,9 @@ import sys
 import os 
 import shlex, subprocess 
 import res_rc
+import shutil
+import re
+
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 
@@ -171,8 +174,6 @@ class LogViewer(QDialog):
 	
         
   def setLog(self, fname):
-	if (fname==self.log):
-	  return
 	if (self.opened == True):
 	  self.logfile.close()
 	  
@@ -180,7 +181,7 @@ class LogViewer(QDialog):
 	self.logfile = QFile(self.log);
 	
 	if (self.logfile.open(QIODevice.ReadOnly) == False):
-	  qDebug("Unable to load file")
+	  qDebug("Unable to load file "+fname)
 	  self.opened=False
 	  return
 	  
@@ -248,6 +249,7 @@ class VPNManager(QMainWindow):
     listTimer = {}
     logView = {}
     nfoView = {}
+    selected_vpn = ""
     
     
     
@@ -344,6 +346,12 @@ class VPNManager(QMainWindow):
       vpn_name =self.getVPN_name()
       if (vpn_name == ""):
 	return
+
+      if (self.selected_vpn == vpn_name):
+	return
+	
+      self.selected_vpn = vpn_name
+
       path = self.root_dir+"/"+vpn_name+"/"+vpn_name+".log"
       self.logView.setLog(path)
       self.nfoView.setLog(path)
@@ -436,7 +444,7 @@ class VPNManager(QMainWindow):
       
     def doEdit(self):
       vpn_name =self.getVPN_name()
-      cmd = self.editor+ self.root_dir+"/"+vpn_name+"/"+vpn_name+".conf&"
+      cmd = self.editor+ "'"+self.root_dir+"/"+vpn_name+"/"+vpn_name+".conf'&"
       qDebug(cmd)
       os.system(str(cmd))
       
@@ -464,19 +472,19 @@ class VPNManager(QMainWindow):
       
       
     def deleteVpn(self, vpn_name):
-      os.system(str("rm -r "+self.root_dir+"/"+vpn_name))
+      shutil.rmtree(str(self.root_dir+"/"+vpn_name))
       self.updateList()
       self.disableActions()
 
     def getPassFile(self, conf):
-      pass_file=""
-      p=subprocess.Popen(["awk","-F"," *","/^auth-user-pass/{print $1} ",conf], stdout=subprocess.PIPE)
-      pass_file=p.communicate()[0]
+      p=re.compile("^auth-user-pass", re.MULTILINE)
+      cfgContents = file(conf).read()
+      res = p.search(cfgContents)
       
-      if (pass_file!=""):
-	return True
-	
-      return False
+      if (res == None):
+	return False
+      
+      return True
       
       
     def doImport(self):
@@ -503,18 +511,12 @@ class VPNManager(QMainWindow):
 	  QErrorMessage.qtHandler(), 
 	  "There is no keys folder next to the config file... \nThere should be "+directory+"/keys folder.")
 	return
-	
-      # Create directories
-      instDir = QDir(self.root_dir)
-      instDir.mkdir(basename)
-      instDir = QDir(self.root_dir+"/"+basename)
-      instDir.mkdir("keys")
       
       # Copy
-      os.system(str("cp "+fileName+" "+self.root_dir+"/"+basename))
-      os.system(str("cp -r "+directory+"/keys/* "+self.root_dir+"/"+basename+"/keys"))
-      os.system(str("cp "+self.root_dir+"/base/init.sh"+" "+self.root_dir+"/"+basename+"/"+basename+".sh"))
-      os.system(str("cp "+self.root_dir+"/base/linux_updown.sh"+" "+self.root_dir+"/"+basename))
+      shutil.copytree(str(directory+"/keys"), str(self.root_dir+"/"+basename+"/keys"))
+      shutil.copy(str(fileName), str(self.root_dir+"/"+basename))
+      shutil.copy(str(self.root_dir+"/base/init.sh"), str(self.root_dir+"/"+basename+"/"+basename+".sh"))
+      shutil.copy(str(self.root_dir+"/base/linux_updown.sh"), str(self.root_dir+"/"+basename))
       
       # Check for password in the configuration
       if (self.getPassFile(fileName)):
@@ -541,9 +543,11 @@ class VPNManager(QMainWindow):
       QFile.setPermissions(self.root_dir+"/"+basename+"/"+basename+".pswd", QFile.WriteOwner|QFile.ReadOwner)
       
       # Fix Config
-      os.system(str("cat "+self.root_dir+"/"+basename+"/"+basename+".conf | sed 's/auth-user-pass.*/auth-user-pass "+basename+".pswd/g' > "+
-      self.root_dir+"/"+basename+"/tmp"))
-      os.system(str("mv "+self.root_dir+"/"+basename+"/tmp "+self.root_dir+"/"+basename+"/"+basename+".conf"))
+      conf = str(self.root_dir+"/"+basename+"/"+basename+".conf")
+      p = re.compile('auth-user-pass.*')
+      cfgContents = file(conf).read()
+      cfgContents=p.sub(str("auth-user-pass '"+basename+".pswd'"), cfgContents)
+      file(conf, 'w').write(cfgContents)
       
       
 # MAIN

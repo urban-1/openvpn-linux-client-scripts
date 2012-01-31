@@ -1,0 +1,3 @@
+* v1.1
+ - Move/Copy operations without os.system
+ - Reloading logs bug fixed
